@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Event Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+    <div class="max-w-4xl mx-auto py-12 px-4">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-bold tracking-tight text-slate-900 mb-2">Kafka Event Hub</h1>
+            <p class="text-slate-500">Produce and monitor events in real-time</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Produce Section -->
+            <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-indigo-500 rounded-full"></span>
+                    Produce Event
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="message" class="block text-sm font-medium text-slate-700 mb-1">Message Content</label>
+                        <input type="text" id="message"
+                               class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                               placeholder="Enter something to send...">
+                    </div>
+                    <button onclick="sendMessage()"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition-colors duration-200 shadow-sm">
+                        Send to Kafka
+                    </button>
+                    <p id="status" class="text-sm text-center hidden"></p>
+                </div>
+            </section>
+
+            <!-- Consume Section -->
+            <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-emerald-500 rounded-full"></span>
+                    Consumed Events
+                </h2>
+                <div id="messages-container" class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    <p class="text-slate-400 text-sm text-center py-4">Waiting for events...</p>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
+                    <span id="count" class="text-xs text-slate-500">0 messages received</span>
+                    <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const msgInput = document.getElementById('message');
+            const status = document.getElementById('status');
+            const message = msgInput.value;
+
+            if (!message) return;
+
+            try {
+                const response = await fetch(`/kafka/publish?message=${encodeURIComponent(message)}`, { method: 'POST' });
+                if (response.ok) {
+                    status.textContent = '✅ Message sent!';
+                    status.className = 'text-sm text-center text-emerald-600 block';
+                    msgInput.value = '';
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (err) {
+                status.textContent = '❌ Error sending message';
+                status.className = 'text-sm text-center text-red-600 block';
+            }
+
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        }
+
+        async function fetchMessages() {
+            try {
+                const response = await fetch('/kafka/messages');
+                const messages = await response.json();
+                const container = document.getElementById('messages-container');
+                const countLabel = document.getElementById('count');
+
+                if (messages.length === 0) {
+                    container.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">Waiting for events...</p>';
+                    countLabel.textContent = '0 messages received';
+                    return;
+                }
+
+                container.innerHTML = messages.reverse().map(msg => `
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700 animate-in fade-in slide-in-from-top-1 duration-300">
+                        ${msg}
+                    </div>
+                `).join('');
+
+                countLabel.textContent = `${messages.length} messages received`;
+            } catch (err) {
+                console.error('Error fetching messages:', err);
+            }
+        }
+
+        // Poll for new messages every 2 seconds
+        setInterval(fetchMessages, 2000);
+        // Initial fetch
+        fetchMessages();
+    </script>
+</body>
+</html>

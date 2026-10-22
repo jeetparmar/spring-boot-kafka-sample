@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl https://start.spring.io/starter.zip -d dependencies=web -d javaVersion=25 -d type=maven-project -d groupId=com.example -d artifactId=demo -d name=demo -o demo.zip)",
+      "Bash(unzip demo.zip)",
+      "Bash(mv demo/* .)",
+      "Bash(./mvnw clean *)"
+    ]
+  }
+}
